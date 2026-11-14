@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Build the host for macOS or Windows with pinned SDL2/GLEW inputs."""
 from pathlib import Path
+from build_paths import project_root
 import hashlib,os,shutil,subprocess,sys,tarfile,urllib.request
-HERE=Path(__file__).resolve().parent;ROOT=HERE.parents[2]
+HERE=Path(__file__).resolve().parent;ROOT=project_root(__file__)
 MAC_SOUND_TOOLS=('i686-w64-mingw32-as','i686-w64-mingw32-objcopy','i686-w64-mingw32-objdump')
 DOWNLOADS={
  'SDL2-devel-2.32.10-mingw.tar.gz':('https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-devel-2.32.10-mingw.tar.gz','83a5d74012311edc3c0d40ea6faecbe57ad692aa033fa5dc273cc937e3938ff2'),
@@ -50,9 +51,27 @@ def prepare_windows():
     sdl=cache/'SDL2-2.32.10/x86_64-w64-mingw32';glew=cache/'glew-2.2.0'
     lib=glew/'lib';lib.mkdir(exist_ok=True)
     cc=os.environ.get('SMB_WINDOWS_CC','x86_64-w64-mingw32-gcc');ar=cc.replace('gcc','ar')
-    subprocess.run([cc,'-O2','-DGLEW_STATIC','-I'+str(glew/'include'),'-c',str(glew/'src/glew.c'),'-o',str(lib/'glew.o')],check=True)
+    subprocess.run([cc,'-O2','-DGLEW_STATIC','-I'+(glew/'include').as_posix(),'-c',str(glew/'src/glew.c'),'-o',str(lib/'glew.o')],check=True)
     subprocess.run([ar,'rcs',str(lib/'libglew32.a'),str(lib/'glew.o')],check=True)
     return sdl,glew
+
+def windows_resource():
+    cache=ROOT/'work/release-deps';cache.mkdir(parents=True,exist_ok=True)
+    manifest=ROOT/'outputs/sm64-melee-lab/release/WindowsRuntime.txt'
+    recipe=cache/'runtime.rc';resource=cache/'runtime.res.o'
+    recipe.write_text('1 24 "'+manifest.as_posix()+'"\n',encoding='utf-8',newline='\n')
+    compiler=os.environ.get('SMB_WINDOWS_CC','x86_64-w64-mingw32-gcc').replace('gcc','windres')
+    subprocess.run([compiler,str(recipe),'-o',str(resource)],check=True)
+    return resource
+
+def repair_sound_byproducts(output):
+    # The pinned Makefile models each pair's second file with an @true recipe.
+    # After a cancelled/failed recipe, Make may delete that second file while
+    # leaving the first up to date. Regenerate the pair rather than get stuck.
+    sound=Path(output)/'sound'
+    for first,second in (('sequences.bin','bank_sets'),('sound_data.ctl','sound_data.tbl')):
+        producer=sound/first;byproduct=sound/second
+        if producer.is_file() and not byproduct.is_file():producer.unlink()
 
 def build():
     windows=os.environ.get('SMB_BUILD_TARGET')=='windows';source=ROOT/'work/sm64ex-source'
@@ -61,17 +80,20 @@ def build():
     environment=mac_build_environment(source/build_dir) if not windows and sys.platform=='darwin' else None
     # Prepare the generated include's parent explicitly, including on resume.
     (source/build_dir).mkdir(parents=True,exist_ok=True)
+    repair_sound_byproducts(source/build_dir)
     command=[make,'-C',str(source),'-j8','VERSION=us','BETTERCAMERA=1','BUILD_DIR='+build_dir]
     if not windows:command+=mac_sound_tools()
     if windows:
         sdl,glew=prepare_windows();cc=os.environ.get('SMB_WINDOWS_CC','x86_64-w64-mingw32-gcc')
         # Quoted flags are evaluated by make's shell; installation paths cannot contain spaces.
         wrapper=ROOT/'work/release-deps/sdl2-config'
-        wrapper.write_text('#!/bin/sh\ncase "$1" in\n--prefix) echo "'+str(sdl)+'";;\n--cflags) echo "-I'+str(sdl/'include')+' -I'+str(sdl/'include/SDL2')+' -Dmain=SDL_main";;\n*) echo "-L'+str(sdl/'lib')+' -lmingw32 -lSDL2main -lSDL2 -lm -ldinput8 -ldxguid -ldxerr8 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lshell32 -lversion -luuid -lsetupapi";;\nesac\n');wrapper.chmod(0o755)
+        wrapper.write_text('#!/bin/sh\ncase "$1" in\n--prefix) echo "'+(sdl).as_posix()+'";;\n--cflags) echo "-I'+(sdl/'include').as_posix()+' -I'+(sdl/'include/SDL2').as_posix()+' -Dmain=SDL_main";;\n*) echo "-L'+(sdl/'lib').as_posix()+' -lmingw32 -lSDL2main -lSDL2 -lm -ldinput8 -ldxguid -ldxerr8 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lshell32 -lversion -luuid -lsetupapi";;\nesac\n',encoding='utf-8',newline='\n');wrapper.chmod(0o755)
         command += ['HOST_OS=Windows_NT','OSX_BUILD=0','WINDOWS_BUILD=1','TARGET_ARCH=x86-64','TARGET_BITS=64','NO_BZERO_BCOPY=1',
-            'CC='+cc,'CXX='+cc.replace('gcc','g++'),'LD='+cc.replace('gcc','g++'),
+            'SMB_TOOLS_CC=cc','SMB_TOOLS_CXX=c++','CC='+cc,'CXX='+cc.replace('gcc','g++'),'LD='+cc.replace('gcc','g++'),
             'CPP='+cc.replace('gcc','cpp')+' -P','AS='+cc.replace('gcc','as'),'OBJCOPY='+cc.replace('gcc','objcopy'),'OBJDUMP='+cc.replace('gcc','objdump'),
-            'SDLCONFIG='+str(wrapper),'SMB_EXTRA_CFLAGS=-I'+str(glew/'include'),'SMB_EXTRA_LDFLAGS=-L'+str(glew/'lib')]
+            'SDLCONFIG='+((os.environ['SHELL']+' ') if os.name=='nt' else '')+(wrapper).as_posix(),'SMB_EXTRA_CFLAGS=-I'+(glew/'include').as_posix(),'SMB_EXTRA_LDFLAGS=-L'+(glew/'lib').as_posix()+' '+windows_resource().as_posix()]
+    
+    if os.name=='nt':command+=['SHELL='+os.environ['SHELL']]
     subprocess.run(command,check=True,env=environment)
     if windows:
         destination=ROOT/'work/SuperMelee64-Windows';destination.mkdir(exist_ok=True)
@@ -79,6 +101,8 @@ def build():
         shutil.copy2(sdl/'bin/SDL2.dll',destination/'SDL2.dll')
         runtime=Path(os.environ.get('SMB_RUNTIME_DIR',ROOT/'work/melee-embedded'))
         shutil.copy2(runtime/'melee_embedded.dll',destination/'melee_embedded.dll')
+        # Aurora resolves its font/menu resources beside the host executable.
+        shutil.copytree(runtime/'resources',destination/'resources',dirs_exist_ok=True)
         native_build=Path(os.environ.get('SMB_ENGINE_BUILD',str(Path(os.environ['SMB_UPSTREAM_ROOT'])/'build/native-proof/melee-pc/build/windows-proof')))
         for path in native_build.glob('*.dll'):shutil.copy2(path,destination/path.name)
         for name in ('libwinpthread-1.dll','libgcc_s_seh-1.dll','libstdc++-6.dll'):

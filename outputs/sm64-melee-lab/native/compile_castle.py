@@ -9,10 +9,11 @@ import hashlib
 import json
 import math
 from pathlib import Path
+from build_paths import project_root
 import struct
 import sys
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = project_root(__file__)
 DEFAULT_MELEE = ROOT/'work/deps/smash-royale'
 SHA1 = '9bef1128717f958171a4afac3ed78ee2bb4e86ce'
 DISPLAY_LISTS = [(0x07006D70, 1), (0x070095F0, 1), (0x0700A860, 4),

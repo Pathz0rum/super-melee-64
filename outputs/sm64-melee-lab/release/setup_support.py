@@ -44,8 +44,11 @@ def filesystem_report(root, minimum_gib=12):
     root=Path(root).resolve();existing=root
     while not existing.exists():existing=existing.parent
     free=shutil.disk_usage(existing).free
+    alias=os.environ.get('SMB_WINDOWS_BUILD_ROOT')
+    mapped=(os.name=='nt' and alias and Path(alias).is_absolute() and
+            Path(alias).exists() and root.exists() and os.path.samefile(alias,root))
     return dict(root=str(root),free_bytes=free,required_bytes=int(minimum_gib*1024**3),
-        enough_space=free>=minimum_gib*1024**3,path_has_spaces=any(c.isspace() for c in str(root)),
+        enough_space=free>=minimum_gib*1024**3,path_has_spaces=not mapped and any(c.isspace() for c in str(root)),
         writable=os.access(existing,os.W_OK))
 
 def require_filesystem(root, minimum_gib=12):
@@ -137,6 +140,10 @@ class Session:
             for line in process.stdout:
                 recent[0]=(recent[0]+line)[-16000:]
                 print(line,end='',flush=True)
+                callback=getattr(self,'output_callback',None)
+                if callback:
+                    try:callback(line)
+                    except (OSError,ValueError):pass # Status UI must not interrupt draining a compiler pipe.
         reader=threading.Thread(target=stream,daemon=True);reader.start()
         try:
             while process.poll() is None:

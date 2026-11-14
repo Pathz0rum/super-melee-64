@@ -5,10 +5,11 @@ No game art is distributed in outputs. Read the native DAT image/palette data
 directly; do not import tools from the owner's independently edited project.
 """
 from pathlib import Path
+from build_paths import project_root
 import hashlib,json,struct,re
 from PIL import Image,ImageDraw,ImageFont,ImageOps
 from native_lineup import PLAYERS
-HERE=Path(__file__).resolve().parent;ROOT=HERE.parents[2]
+HERE=Path(__file__).resolve().parent;ROOT=project_root(__file__)
 
 class Archive:
     def __init__(self,path):

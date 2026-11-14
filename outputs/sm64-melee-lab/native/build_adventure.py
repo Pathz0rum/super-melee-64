@@ -5,10 +5,11 @@ The owner's concurrently edited Melee checkout is never compiled or modified.
 Requires the pinned bootstrap and local-disc asset caches under work/.
 """
 from pathlib import Path
+from build_paths import project_root
 import os,sys,shutil
 import hashlib, json, subprocess
 HERE=Path(__file__).resolve().parent
-ROOT=HERE.parents[2]
+ROOT=project_root(__file__)
 OUT=Path(os.environ.get('SMB_RUNTIME_DIR',str(ROOT/'work/melee-embedded')))
 
 def build():

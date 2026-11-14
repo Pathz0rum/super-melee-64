@@ -5,17 +5,42 @@ Read-only upstream access; all compilation, assets and launcher state are local
 to this SM64 experiment. Re-run after building a newer Melee3D version.
 """
 from pathlib import Path
+from build_paths import project_root
 import os,sys,shutil
 import hashlib,json,shlex,shutil,subprocess
 
 HERE=Path(__file__).resolve().parent
-ROOT=HERE.parents[2]
+ROOT=project_root(__file__)
 OUT=Path(os.environ.get('SMB_RUNTIME_DIR',str(ROOT/'work/melee-embedded')))
 UP=Path(os.environ.get('SMB_UPSTREAM_ROOT',str(ROOT/'work/deps/smash-royale')))
 WINDOWS=os.environ.get('SMB_BUILD_TARGET')=='windows'
 SOURCE=Path(os.environ.get('SMB_ENGINE_SOURCE',str(UP/'build/native-proof/melee-pc')))
 BUILD=Path(os.environ.get('SMB_ENGINE_BUILD',str(SOURCE/('build/windows-proof' if WINDOWS else 'build/macos-proof'))))
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+
+def command_arguments(command):
+    if os.name!='nt':return shlex.split(command)
+    import ctypes
+    from ctypes import wintypes
+    shell=ctypes.WinDLL('shell32',use_last_error=True)
+    shell.CommandLineToArgvW.argtypes=[wintypes.LPCWSTR,ctypes.POINTER(ctypes.c_int)]
+    shell.CommandLineToArgvW.restype=ctypes.POINTER(wintypes.LPWSTR)
+    count=ctypes.c_int();arguments=shell.CommandLineToArgvW(command,ctypes.byref(count))
+    if not arguments:raise ctypes.WinError(ctypes.get_last_error())
+    try:return [arguments[i] for i in range(count.value)]
+    finally:
+        kernel=ctypes.WinDLL('kernel32');kernel.LocalFree.argtypes=[ctypes.c_void_p];kernel.LocalFree(arguments)
+
+def linker_command(build):
+    if os.name=='nt':
+        # Native Windows Ninja uses a linker response file, which it normally
+        # deletes after a successful build. Ask Ninja to expand its own rule;
+        # do not freeze an @file reference back into a mutable build directory.
+        rules=subprocess.check_output(['ninja','-C',str(build),'-t','rules'],text=True).splitlines()
+        rule=next(name for name in rules if name.startswith('CXX_EXECUTABLE_LINKER__melee_'))
+        commands=json.loads(subprocess.check_output(['ninja','-C',str(build),'-t','compdb','-x',rule],text=True))
+        return next(row['command'] for row in commands if row['output'].replace('\\','/').endswith('melee.exe'))
+    return subprocess.check_output(['ninja','-C',str(build),'-t','commands','melee'],text=True).splitlines()[-1]
 
 def host_configured_main(source):
     marker='SMB EMBED CONFIG host_owned=1 discovery=off'
@@ -38,6 +63,29 @@ def clone(source,destination):
     if sys.platform=='darwin':subprocess.run(['cp','-cR',str(source),str(destination)],check=True)
     elif source.is_dir():shutil.copytree(source,destination)
     else:shutil.copy2(source,destination)
+
+def snapshot_dependencies(source,destination):
+    if os.name!='nt':return clone(source,destination)
+    # Headers, generated configuration and static/import libraries are needed
+    # for isolated rebuilds. Original compiler objects and download archives are
+    # not referenced by the integration plan and can add gigabytes on Windows.
+    destination=Path(destination)
+    if destination.exists():shutil.rmtree(destination)
+    shutil.copytree(source,destination,ignore=shutil.ignore_patterns('.git','*.o','*.obj','*.pdb','*.idb','*.tar.gz','*.tar.xz','*.zip'))
+
+def stage_asset(source,destination):
+    # These verified game resources are immutable. Link only data inside this
+    # private workspace, never mutable source, compiler outputs or user saves.
+    if os.name=='nt':
+        try:os.link(source,destination);return
+        except OSError:pass # exFAT/network filesystems may not support hardlinks.
+    shutil.copy2(source,destination)
+
+def snapshot_assets(source,destination):
+    if os.name!='nt':return clone(source,destination)
+    destination=Path(destination)
+    if destination.exists():shutil.rmtree(destination)
+    shutil.copytree(source,destination,copy_function=stage_asset)
 
 def snapshot_external_link_inputs(link,source,build,output):
     """Freeze absolute static libraries outside the copied source/build trees."""
@@ -72,15 +120,15 @@ def refresh():
     clone(SOURCE/'extern/aurora/include',OUT/'abi/aurora')
     clone(SOURCE/'extern/aurora/lib',OUT/'abi/aurora-lib')
     clone(SOURCE/'extern/monocypher',OUT/'abi/monocypher')
-    clone(BUILD/'_deps',OUT/'abi/build-deps')
+    snapshot_dependencies(BUILD/'_deps',OUT/'abi/build-deps')
     clone(SOURCE/'resources',OUT/'resources')
-    clone(UP/'build/native-proof/akaneia-world-files',OUT/'assets')
-    clone(UP/'build/akaneia/disc/files/audio',OUT/'assets/audio')
+    snapshot_assets(UP/'build/native-proof/akaneia-world-files',OUT/'assets')
+    snapshot_assets(UP/'build/akaneia/disc/files/audio',OUT/'assets/audio')
     for f in (UP/'build/akaneia/disc/files').rglob('*'):
         target=OUT/'assets'/f.relative_to(UP/'build/akaneia/disc/files')
         if f.is_file() and not target.exists():
             target.parent.mkdir(parents=True,exist_ok=True)
-            shutil.copy2(f,target)
+            stage_asset(f,target)
     if not os.environ.get('SMB_KEEP_LINEUP'):shutil.copy2(UP/'tools/melee3d/native_lineup.py',HERE/'native_lineup.py')
     # Any C/C++ dependency path in the compiler plans resolves to a snapshot.
     def remap(s):
@@ -89,12 +137,16 @@ def refresh():
                     (str(SOURCE/'extern/aurora/lib'),str(OUT/'abi/aurora-lib')),
                     (str(SOURCE.parent/'mac-runtime'),str(OUT/'abi/mac-runtime')),
                     (str(SOURCE/'../mac-runtime'),str(OUT/'abi/mac-runtime')),
-                    (str(SOURCE/'src'),str(OUT/'abi/src'))):s=s.replace(a,b)
+                    (str(SOURCE/'src'),str(OUT/'abi/src'))):
+            variants={a,a.replace('\\','/')}
+            if os.name=='nt':
+                resolved=str(Path(a).resolve());variants.update((resolved,resolved.replace('\\','/')))
+            for variant in sorted(variants,key=len,reverse=True):s=s.replace(variant,b.replace('\\','/') if '/' in variant else b)
         return s
     commands=json.loads((BUILD/'compile_commands.json').read_text())
     def compiler(ending):
-        entry=next(c for c in commands if c['file'].endswith(ending))
-        args=shlex.split(entry['command'])
+        entry=next(c for c in commands if c['file'].replace('\\','/').endswith(ending))
+        args=command_arguments(entry['command'])
         for flag in ('-o','-c'):
             i=args.index(flag);del args[i:i+2]
         return [remap(s).replace('-fPIE','-fPIC') for s in args]
@@ -107,8 +159,10 @@ def refresh():
     plan['game_compiler'][1:1]=['-fexec-charset=CP932','-Wno-scalar-storage-order']
     plan['game_compiler']=[s for s in plan['game_compiler'] if s!='-fcolor-diagnostics']
     plan['gpu_compiler']+=['-I',str(OUT/'abi/aurora-lib'),'-I',str(HERE)]
-    raw=subprocess.check_output(['ninja','-C',str(BUILD),'-t','commands','melee'],text=True).splitlines()[-1]
-    link=shlex.split(raw.split(' && ')[1])
+    raw=linker_command(BUILD)
+    link=command_arguments(raw.split(' && ')[1])
+    if os.name=='nt':
+        link=[s.replace('\\','/') if not s.startswith('-') else s for s in link]
     for i,s in enumerate(link):
         if not s.startswith('-') and not Path(s).is_absolute() and s.endswith(('.o','.obj','.a','.res','.lib')):
             target=OUT/'pinned-link-inputs'/s;target.parent.mkdir(parents=True,exist_ok=True)
@@ -121,7 +175,7 @@ def refresh():
     library=OUT/('melee_embedded.dll' if WINDOWS else 'libmelee_embedded.dylib')
     link[link.index('-o')+1]=str(library);plan['library']=str(library);plan['target']='windows' if WINDOWS else 'mac'
     if WINDOWS:
-        link=[s for s in link if s!='-Wl,-u,WinMain' and not s.startswith('-Wl,--out-implib,') and not s.endswith('/libaurora_main.a')]
+        link=[s for s in link if s!='-Wl,-u,WinMain' and not s.startswith('-Wl,--out-implib,') and not s.replace('\\','/').endswith('/libaurora_main.a')]
         link+=['-shared','-Wl,--export-all-symbols']
     else:
         link+=['-dynamiclib','-Wl,-exported_symbols_list,'+str(OUT/'exports.txt'),'-Wl,-install_name,@rpath/libmelee_embedded.dylib']

@@ -1,6 +1,6 @@
 # Publishing installer downloads
 
-The README's Mac and Windows buttons download the actual installer ZIPs. They
+The README's Mac and Windows buttons download the actual installer files. They
 are updated automatically after a complete release is published, including beta
 releases. Linux does not currently have a supported installer.
 
@@ -12,9 +12,11 @@ releases. Linux does not currently have a supported installer.
 2. Create a release tagged `vVERSION`, such as `v0.6.0-beta.1`. Upload both kits
    **before publishing**. Expected names are
    `SuperMelee64-VERSION-mac-source-kit.zip` and
-   `SuperMelee64-VERSION-windows-experimental-source-kit.zip`. The Windows
-   `-experimental` component can be removed only when Windows is actually
-   supported and its package name changes accordingly.
+   `SuperMelee64-VERSION-Windows-x64-Setup.exe`. Build the native Windows
+   installer using [its packaging instructions](WINDOWS-INSTALLER.md). Keep
+   Windows labelled experimental until hardware testing is complete. Older
+   source kits remain available for developers; the native EXE takes priority
+   when both are attached.
 3. Put the logo, direct download buttons and short setup instructions first in
    the release notes. Use that release's exact asset URLs; an older release's
    notes should continue downloading its own files. Place developer guides and
@@ -24,7 +26,7 @@ releases. Linux does not currently have a supported installer.
    uploaded installers, and commits the README update as Memelees using the
    GitHub noreply address. Its source audit checks the complete Git history.
 5. Verify the workflow succeeded and both README buttons download the expected
-   ZIP. If assets were uploaded late, a release was removed, or an asset was
+   installer. If assets were uploaded late, a release was removed, or an asset was
    replaced, run the workflow manually from Actions to refresh the links.
 
 The workflow deliberately runs only in `memelees/super-melee-64` and only when
@@ -82,5 +84,5 @@ changes only the marked block and, when present, the README digest in
 writing; a stale source export must be audited and regenerated first. It never
 rewrites game code, creates releases, uploads packages or edits release notes.
 
-The image buttons use Shields; plain Mac ZIP and Windows ZIP links remain
+The image buttons use Shields; plain Mac ZIP and Windows Setup.exe links remain
 visible if badge images cannot load.

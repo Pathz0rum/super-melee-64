@@ -14,6 +14,9 @@ def root_path():
     raise RuntimeError('Keep Setup.py with its complete extracted source package')
 ROOT=root_path();NATIVE=ROOT/'outputs/sm64-melee-lab/native'
 sys.path.insert(0,str(NATIVE))
+from build_paths import project_root
+if os.name=='nt' and os.environ.get('SMB_WINDOWS_BUILD_ROOT'):
+    ROOT=project_root(NATIVE/'build_host.py');NATIVE=ROOT/'outputs/sm64-melee-lab/native'
 from build_bootstrap import PIN as ADAPTER_PIN, verify as verify_bootstrap, extract as extract_bootstrap, configure_local_sources
 from package_release import VERSION
 from build_host import MAC_SOUND_TOOLS
@@ -96,13 +99,17 @@ def windows_environment():
 def create_windows_launcher():
     """Compile the small native launcher and write only local runtime settings."""
     target=ROOT/'Super Melee 64.exe'
+    from build_host import windows_resource
     run(['x86_64-w64-mingw32-g++','-std=c++17','-O2','-municode','-mwindows','-static',
-         Path(__file__).parent/'WindowsLauncher.cpp','-o',target,'-lshell32','-lole32','-luuid'])
+         Path(__file__).parent/'WindowsLauncher.cpp',windows_resource(),'-o',target,'-lshell32','-lole32','-luuid'])
     env=windows_environment()
     (ROOT/'SuperMelee64.ini').write_text('[Environment]\n'+''.join(k+'='+v+'\n' for k,v in env.items()),encoding='utf-16')
     return target
 
 def windows_engine(upstream):
+    if os.name=='nt':
+        from windows_native_build import build_fighter_engine
+        return build_fighter_engine(upstream,run)
     # Upstream's Windows command assumes these generators already ran on Mac.
     # Run all of them explicitly for a fresh Windows installation.
     code='''from native_mac import stage
@@ -198,6 +205,12 @@ def install(args,rom,disc,identities,build_env=None):
     target=host/'baserom.us.z64'
     if target.exists() and digest(target,'sha1')!=ROM_SHA1:raise RuntimeError('Preserving a different existing host ROM: '+str(target))
     if not target.exists():copy_owned_input(rom,target,'sha1',ROM_SHA1)
+    if args.platform=='windows' and os.name=='nt':
+        # Native third-party patch tools use narrow CRT paths. Keep their inputs
+        # under the checked ASCII build alias, including Unicode user accounts.
+        owned=work/'game-inputs/Melee.iso'
+        copy_owned_input(disc,owned,'md5',MELEE_MD5)
+        disc=owned
     env=dict(os.environ if build_env is None else build_env,SMB_UPSTREAM_ROOT=str(upstream),SMB_BUILD_TARGET=args.platform,
         SMB_RUNTIME_DIR=str(work/'melee-embedded'),SM64_MELEE_DISC=str(disc),
         SMB_UPSTREAM_REVISION=PINS['smash-royale'][1])

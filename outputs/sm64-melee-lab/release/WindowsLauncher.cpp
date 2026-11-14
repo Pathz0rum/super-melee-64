@@ -70,7 +70,7 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int) {
     std::wstring movies=folder(FOLDERID_Videos);if(movies.empty())movies=support+L"/Recordings";
     const std::wstring fresh=newProfile(support),continued=continuation(support);
     const std::wstring config=root+L"/SuperMelee64.ini",game=root+L"/work/SuperMelee64-Windows/SuperMelee64.exe";
-    if(!exists(config)||!exists(game)){fail(L"The local game build is incomplete. Open Setup Windows.cmd, supply your original game files, then choose Build. Keep the launcher with its complete game folder.");return 1;}
+    if(!exists(config)||!exists(game)){fail(L"The local game build is incomplete. Open Set up or repair Super Melee 64 from the Start menu, choose your original game files, then Install / Resume.");return 1;}
     std::vector<wchar_t> data(65536);
     DWORD size=GetPrivateProfileSectionW(L"Environment",data.data(),DWORD(data.size()),config.c_str());
     if(!size||size>=data.size()-2){fail(L"The launcher configuration is missing or too large. Run setup again.");return 1;}
@@ -99,8 +99,10 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int) {
     std::wstring command=quote(game)+L" --windowed --savepath "+quote(profile);
     STARTUPINFOW startup{};startup.cb=sizeof(startup);startup.dwFlags=STARTF_USESTDHANDLES;startup.hStdOutput=output;startup.hStdError=output;startup.hStdInput=input;PROCESS_INFORMATION process{};
     if(!CreateProcessW(game.c_str(),command.data(),nullptr,nullptr,TRUE,0,nullptr,root.c_str(),&startup,&process)) {
-        fail(L"Windows could not start the game (error "+std::to_wstring(GetLastError())+L"). Check the Visual C++ x64 runtime, GPU drivers and setup.log.");return 1;
+        fail(L"Windows could not start the game (error "+std::to_wstring(GetLastError())+L"). Open Set up or repair Super Melee 64 from the Start menu and choose Repair / Resume. Keep any missing-DLL message and the setup log if the problem continues.");return 1;
     }
     CloseHandle(output);CloseHandle(input);
-    CloseHandle(process.hThread);CloseHandle(process.hProcess);return 0;
+    CloseHandle(process.hThread);
+    WaitForSingleObject(process.hProcess,INFINITE);
+    DWORD result=1;GetExitCodeProcess(process.hProcess,&result);CloseHandle(process.hProcess);return int(result);
 }

@@ -17,6 +17,11 @@ def diagnose(error, *, stage=None, version='development'):
         value=dict(error.diagnostic, version=version, stage=stage)
         if stage:value['message'] += '\nStopped at step {number}/{total}: {label}.'.format(**stage)
         return value
+    status=getattr(error,'returncode',0) or 0
+    if status & 0xffffffff in (0xc0000005,0xc0000409,0xc000001d):
+        return result('native-tool-crash','A Windows build tool crashed',
+            'A native setup tool exited unexpectedly (Windows status 0x%08X). This is different from a source-code compilation error.'%(status & 0xffffffff),
+            'Close other setup sessions and choose Repair / Resume. If it happens again, share setup-gui.log and Workspace/setup.log with the installer version. Your original files and verified downloads are kept.')
     space = re.search(r'at least ([\d.]+) gib.*?([\d.]+) gib is available', lower)
     if space:
         required, available = map(float, space.groups())

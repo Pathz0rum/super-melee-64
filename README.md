@@ -21,9 +21,10 @@ Akaneia characters and optional enemy fighters.
 
 You'll need your own **US Super Mario 64 ROM** and **Melee USA Rev 2 disc image**.
 
-1. **Download for your computer** above, then extract the ZIP.
+1. **Download for your computer** above. Extract the ZIP on Mac; run the
+   downloaded **Windows Setup.exe** on Windows.
 2. **Open the installer:** `Install Super Melee 64.app` on Mac, or
-   `Setup Windows.cmd` on Windows.
+   **Super Melee 64** from the Windows Start menu.
 3. **Choose or drop in both game files**, follow the setup prompts and click
    **Build / Resume**. Then open **Super Melee 64** to play.
 
@@ -40,10 +41,11 @@ blocks the downloaded helper, follow [Apple's instructions for opening a trusted
 downloaded app](https://support.apple.com/en-us/102445). The installer does not
 disable system security settings.
 
-On Windows, the helper guides installation of the Visual C++ runtime and
-WSL/Ubuntu build tools. Follow any restart and Ubuntu first-run prompts, then
-return to the helper. The finished native game does not need Python or WSL
-during gameplay. Windows gameplay remains experimental.
+On Windows, Setup installs for your account and prepares private build tools
+automatically. You do not need Ubuntu, WSL, a separately installed Python or
+administrator access. **Set up or repair Super Melee 64** in the Start menu
+reopens the importer. Updates and uninstall preserve imported files and saves.
+Windows gameplay remains experimental.
 
 Setup supports cancellation and resume, retains verified downloads and records
 a setup log. See [START HERE](outputs/sm64-melee-lab/release/START%20HERE.txt) for

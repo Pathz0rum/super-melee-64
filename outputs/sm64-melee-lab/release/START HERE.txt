@@ -86,18 +86,27 @@ Pre-build failures such as low disk space also have a saved diagnostic; you do
 not need to find a compiler traceback to understand the problem. If the message
 does not identify the cause, send the latest setup log and error details.
 
-WINDOWS — EXPERIMENTAL x64 WINDOWS 10/11 BETA
-1. Extract the complete Windows kit to C:\SuperMelee64 (no spaces/OneDrive).
-2. Open Setup Windows.cmd and choose Prepare Build Tools. Follow Microsoft's
-   prompts for the VC++ x64 runtime and WSL/Ubuntu 24.04. Finish Ubuntu's first
-   run and restart Windows if requested, then retry Prepare Build Tools.
-3. Select/drop both game files and build. WSL is used for compilation.
-4. Open Super Melee 64.lnk. The native launcher/game need no Python or WSL
-   during gameplay. Keep the build log if setup fails.
+WINDOWS — NATIVE x64 WINDOWS 10/11 BETA
+1. Download the Windows Setup.exe from the release page and run it.
+2. Install for your account. Open Super Melee 64 from the Start menu.
+3. Drag in your original game files, or choose them, then Install / Resume.
+   The helper downloads verified private tools and builds both games locally.
+   No Ubuntu, WSL, separately installed Python or administrator access is needed.
+4. Choose Play. After the first setup, the normal shortcut opens the game.
 
-Requires DirectX 12 for Melee and working OpenGL for the SM64 host. The complete
-Windows game, installer GUI, recording and online play still need real Windows
-hardware testing. Cross-compilation and launcher unit tests are narrower checks.
+The Start menu also has Set up or repair Super Melee 64. Use it to resume a
+stopped import or rebuild after an update. Cancellation keeps verified downloads.
+App updates and uninstall preserve user data. To remove imported files manually,
+close the game and setup, then remove %LOCALAPPDATA%\Memelees\SuperMelee64.
+Saves remain in %APPDATA%\Super Melee 64. Back them up before deleting that folder.
+
+Setup log: %LOCALAPPDATA%\Memelees\SuperMelee64\setup-gui.log
+Detailed build log: the Workspace\setup.log file inside that same folder.
+Errors also appear as setup-error.txt beside setup-gui.log.
+
+Requires DirectX 12 for Melee and working OpenGL for the SM64 host. Windows
+remains an experimental beta; graphics, controllers and online play still need
+verification on Windows hardware. CrossOver tests do not cover every PC driver.
 
 PLAY / SAVES
 New Playthrough starts from zero stars; Continue resumes it. Unlocked is a
@@ -171,5 +180,5 @@ Mac startup log: ~/Library/Logs/Super Melee 64/latest.log
 Use the GitHub bug template with platform, fighter, stage and reproduction steps.
 Review any logs/screenshots for private details before posting them.
 
-Only share the source kit. The generated game app/work folder contains your
+Only share the official installer or source kit. The generated game app/work folder contains your
 private game data and extracted assets and must never be uploaded with it.

@@ -55,10 +55,14 @@ The bundled source adapter also contains patches against that upstream code.
 Calling a package "source-only" does not resolve those underlying permissions.
 
 Distributable project artifacts are the reviewed source repository and source
-build kits. Do not upload locally built game apps, engine binaries, game images,
+build kits and native setup helpers. Do not upload locally built game apps, engine binaries, game images,
 extracted art/audio, saved games, recordings or local dependency/build trees as
-project release assets. The small installer helper is built from its published
-source and contains only the reviewed source kit and original branding.
+project release assets. The installer helper is built from its published
+source and contains the reviewed source kit, original branding, an official
+Python runtime, open-source setup utilities and Microsoft's app-local Visual
+C++ runtime, with their notices and source
+provenance. These utilities are separate from either game's engine. No game
+engine or extracted game data is bundled in the Windows installer.
 
 The automated content checks detect accidental assets, binaries and common
 credential formats. They do not establish copyright ownership, grant missing

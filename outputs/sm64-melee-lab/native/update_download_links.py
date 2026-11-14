@@ -103,6 +103,7 @@ def choose_release(releases):
             'SuperMelee64-' + version + '-mac-source-kit.zip': 'mac',
             'SuperMelee64-' + version + '-windows-experimental-source-kit.zip': 'windows',
             'SuperMelee64-' + version + '-windows-source-kit.zip': 'windows',
+            'SuperMelee64-' + version + '-Windows-x64-Setup.exe': 'windows',
         }
         assets = release.get('assets')
         if not isinstance(assets, list) or len(assets) > 100:
@@ -117,10 +118,12 @@ def choose_release(releases):
             if name not in names or asset.get('state') != 'uploaded':
                 continue
             platform = names[name]
-            if platform in installers or not positive_integer(asset.get('size')):
+            priority=2 if name.endswith('-Windows-x64-Setup.exe') else 1
+            if (platform in installers and priority==installers[platform]['priority']) or not positive_integer(asset.get('size')):
                 raise ValueError('Ambiguous or empty installer asset')
             url = exact_url(asset.get('browser_download_url'), BASE + '/releases/download/' + tag + '/' + name)
-            installers[platform] = {'url': url, 'experimental': '-experimental-' in name}
+            if platform not in installers or priority>installers[platform]['priority']:
+                installers[platform] = {'url': url, 'experimental': '-experimental-' in name or name.endswith('.exe'), 'priority':priority}
         if set(installers) == {'mac', 'windows'}:
             candidates.append((published, release['id'], {
                 'version': version, 'tag': tag, 'prerelease': release['prerelease'],
@@ -146,7 +149,7 @@ def render_block(release):
         '  <a href="' + windows + '"><img src="' + html.escape(WINDOWS_BADGE, quote=True) + '" alt="Download for Windows" height="44"></a>',
         '</p>',
         '<p align="center">' + heading + ' · Mac: Apple Silicon, macOS 15+ · Windows x64: ' + windows_status + ' · Linux: not available</p>',
-        '<p align="center"><a href="' + mac + '">Mac ZIP</a> · <a href="' + windows + '">Windows ZIP</a> · <a href="' + notes + '">Release notes — ' + version + ' (' + status + ')</a></p>',
+        '<p align="center"><a href="' + mac + '">Mac ZIP</a> · <a href="' + windows + '">'+('Windows Setup.exe' if release['windows']['url'].endswith('.exe') else 'Windows ZIP')+'</a> · <a href="' + notes + '">Release notes — ' + version + ' (' + status + ')</a></p>',
         END,
     ])
 

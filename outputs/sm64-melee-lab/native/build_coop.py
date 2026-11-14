@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Build the independent 16-player host with the shared native fighter bridge."""
 from pathlib import Path
-import os,shutil,subprocess,hashlib,tarfile,urllib.request
-HERE=Path(__file__).resolve().parent;ROOT=HERE.parents[2]
+from build_paths import project_root
+import os,sys,shutil,subprocess,hashlib,tarfile,urllib.request
+HERE=Path(__file__).resolve().parent;ROOT=project_root(__file__)
 
 def windows_lua(cc):
     cache=ROOT/'work/release-deps';archive=cache/'lua-5.3.5.tar.gz'
@@ -27,19 +28,21 @@ def build():
     command=[make,'-C',str(ROOT/'work/sm64coopdx-melee'),'-j8','VERSION=us','USE_APP=0','DISCORD_SDK=0','COOPNET=1','UPDATER=0','CP=cp']
     command+=sound_tools
     if os.environ.get('SMB_BUILD_TARGET')=='windows':
-        from build_host import prepare_windows
+        from build_host import prepare_windows,windows_resource
         sdl,glew=prepare_windows();runtime=Path(os.environ.get('SMB_RUNTIME_DIR',ROOT/'work/melee-embedded'));zlib=runtime/'abi/build-deps/zlib-build'
         if not (zlib/'libzlib.dll.a').is_file():raise FileNotFoundError('Build the frozen Windows Melee runtime before the co-op host')
         shutil.copy2(zlib/'libzlib.dll.a',glew/'lib/libz.a')
         cc=os.environ.get('SMB_WINDOWS_CC','x86_64-w64-mingw32-gcc');lua=windows_lua(cc)
         wrapper=ROOT/'work/release-deps/coop-sdl2-config'
-        wrapper.write_text('#!/bin/sh\ncase "$1" in\n--cflags) echo "-I'+str(sdl/'include')+' -I'+str(sdl/'include/SDL2')+' -Dmain=SDL_main";;\n--prefix) echo "'+str(sdl)+'";;\n*) echo "-L'+str(sdl/'lib')+' -lmingw32 -lSDL2main -l:libSDL2.dll.a -lm -ldinput8 -ldxguid -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lshell32 -lsetupapi -lversion -luuid -lcomdlg32";;\nesac\n');wrapper.chmod(0o755)
+        wrapper.write_text('#!/bin/sh\ncase "$1" in\n--cflags) echo "-I'+(sdl/'include').as_posix()+' -I'+(sdl/'include/SDL2').as_posix()+' -Dmain=SDL_main";;\n--prefix) echo "'+(sdl).as_posix()+'";;\n*) echo "-L'+(sdl/'lib').as_posix()+' -lmingw32 -lSDL2main -l:libSDL2.dll.a -lm -ldinput8 -ldxguid -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lshell32 -lsetupapi -lversion -luuid -lcomdlg32";;\nesac\n',encoding='utf-8',newline='\n');wrapper.chmod(0o755)
         command+=['HOST_OS=Windows','OSX_BUILD=0','WINDOWS_BUILD=1','TARGET_ARCH=x86-64','TARGET_BITS=64','NO_BZERO_BCOPY=1','BUILD_DIR_BASE=build-melee-windows',
             'CROSS=x86_64-w64-mingw32-','CC='+cc,'CXX='+cc.replace('gcc','g++'),'LD='+cc.replace('gcc','g++'),'CPP='+cc.replace('gcc','cpp')+' -P',
             'OBJCOPY='+cc.replace('gcc','objcopy'),'OBJDUMP='+cc.replace('gcc','objdump'),'AS='+cc.replace('gcc','as'),
-            'SDLCONFIG='+str(wrapper),'SMB_EXTRA_CFLAGS=-I'+str(glew/'include')+' -DGLEW_STATIC -I'+str(zlib),'ICON=0','SMB_LUA_LIB='+str(lua),'SMB_EXTRA_LDFLAGS=-L'+str(glew/'lib')]
-    command+=['SMB_TOOLS_CC='+('clang' if os.uname().sysname=='Darwin' else 'cc'),'SMB_TOOLS_CXX='+('clang++' if os.uname().sysname=='Darwin' else 'c++')]
+            'SDLCONFIG='+((os.environ['SHELL']+' ') if os.name=='nt' else '')+(wrapper).as_posix(),'SMB_EXTRA_CFLAGS=-I'+(glew/'include').as_posix()+' -DGLEW_STATIC -I'+(zlib).as_posix(),'ICON=0','SMB_LUA_LIB='+(lua).as_posix(),'SMB_EXTRA_LDFLAGS=-L'+(glew/'lib').as_posix()+' '+windows_resource().as_posix()]
+    command+=['SMB_TOOLS_CC='+('clang' if sys.platform=='darwin' else 'cc'),'SMB_TOOLS_CXX='+('clang++' if sys.platform=='darwin' else 'c++')]
 
+    
+    if os.name=='nt':command+=['SHELL='+os.environ['SHELL']]
     subprocess.run(command,check=True)
     if os.environ.get('SMB_BUILD_TARGET')=='windows':
         source=ROOT/'work/sm64coopdx-melee/build-melee-windows/us_pc/sm64coopdx.exe';destination=ROOT/'work/SuperMelee64-Windows'

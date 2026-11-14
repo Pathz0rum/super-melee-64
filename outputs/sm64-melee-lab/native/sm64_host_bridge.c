@@ -840,7 +840,11 @@ int smb_host_frame(struct MarioState* m) {
             fprintf(stderr,"SMB HOST PAUSE end native_ticks=%u\n",snapshot.reserved);
         }
         if(getenv("SMB_SMOKE")&&frames>= (unsigned)atoi(getenv("SMB_SMOKE_FRAMES")?:"180")) {
-            fprintf(stderr,"SMB HOST SMOKE COMPLETE frames=%u\nSMB HOST EMBED COMPLETE pid=%d host_frames=%u native_ticks=%u\n",frames,getpid(),frames,snapshot.reserved);exit(0);
+            fprintf(stderr,"SMB HOST SMOKE COMPLETE frames=%u\nSMB HOST EMBED COMPLETE pid=%d host_frames=%u native_ticks=%u\n",frames,getpid(),frames,snapshot.reserved);
+#ifdef _WIN32
+            smb_host_shutdown();
+#endif
+            exit(0);
         }
         return 0; /* SM64 executes flight/shell movement and its world objects. */
     }
@@ -895,6 +899,9 @@ int smb_host_frame(struct MarioState* m) {
     unsigned smoke_limit=smoke_frames?(unsigned)atoi(smoke_frames):180;
     if(getenv("SMB_SMOKE")&&frames>=smoke_limit) {fprintf(stderr,"SMB HOST SMOKE COMPLETE frames=%u\n",frames);
         if(embedded_step)fprintf(stderr,"SMB HOST EMBED COMPLETE pid=%d host_frames=%u native_ticks=%u\n",getpid(),frames,snapshot.reserved);
+#ifdef _WIN32
+        smb_host_shutdown();
+#endif
         exit(0);}
     return 1;
 }

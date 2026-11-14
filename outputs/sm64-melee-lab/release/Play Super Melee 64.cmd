@@ -1,7 +1,10 @@
 @echo off
-if not exist "%~dp0Super Melee 64.exe" (
-  echo Run Setup Windows.cmd first to build Super Melee 64.
-  pause
-  exit /b 1
+if exist "%~dp0Super Melee 64.exe" (
+  start "" "%~dp0Super Melee 64.exe"
+  exit /b 0
 )
-start "" "%~dp0Super Melee 64.exe"
+if exist "%LOCALAPPDATA%\Programs\Super Melee 64\SuperMelee64.exe" (
+  start "" "%LOCALAPPDATA%\Programs\Super Melee 64\SuperMelee64.exe"
+  exit /b 0
+)
+call "%~dp0Setup Windows.cmd"

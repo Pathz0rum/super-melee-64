@@ -5,7 +5,7 @@ Only patches and public source are downloaded. Original game images stay local.
 Archives are SHA-256 pinned; the adapter also verifies each resulting image.
 """
 from pathlib import Path
-import argparse,hashlib,subprocess,sys,time
+import argparse,hashlib,json,subprocess,sys,time
 from setup_support import checkout_pinned
 
 PATCHES=(
@@ -19,6 +19,36 @@ def sha(path):
     with Path(path).open('rb') as stream:
         for block in iter(lambda:stream.read(1024*1024),b''):digest.update(block)
     return digest.hexdigest()
+
+def prepared_inputs(adapter,write=False):
+    """Keep checked extracted inputs; discard only derived, checked full images."""
+    root=Path(adapter)/'build';receipt=root/'prepared-inputs.json'
+    if not write:
+        if not receipt.exists():return False
+        data=json.loads(receipt.read_text(encoding='utf-8'))
+        if data.get('format')!=1:raise RuntimeError('Unsupported local input cache; preserve and inspect it.')
+        for name,expected in data['files'].items():
+            path=Path(name)
+            if path.is_absolute() or '..' in path.parts or '\\' in name:raise ValueError('Unsafe local input cache path')
+            target=root/path
+            if target.is_symlink() or not target.is_file() or sha(target)!=expected:raise RuntimeError('A prepared local game file changed; preserving it: '+name)
+        return True
+    folders=[root/'akaneia/disc',root/'references/walz0-stage-assets']
+    paths=[p for folder in folders for p in folder.rglob('*') if p.is_file()]
+    paths.append(root/'references/walz0-payload.bin')
+    if not paths or not (root/'akaneia/disc/sys/main.dol').is_file():raise RuntimeError('Incomplete local game extraction')
+    from setup_support import atomic_json
+    atomic_json(receipt,dict(format=1,files={p.relative_to(root).as_posix():sha(p) for p in sorted(paths)}))
+    from prepare_akaneia import PATCHED_MD5,VERSION
+    from inspect_walz0 import REFERENCE_SHA256
+    derived=[(root/('akaneia/Akaneia-'+VERSION+'.iso'),'md5',PATCHED_MD5),
+             (root/'references/walz0-v1.0.iso','sha256',REFERENCE_SHA256)]
+    for path,algorithm,expected in derived:
+        if path.exists():
+            with path.open('rb') as stream:actual=hashlib.file_digest(stream,algorithm).hexdigest()
+            if actual!=expected:raise RuntimeError('Preserving a changed derived image: '+path.name)
+            path.unlink()
+    return True
 
 def download_pinned(url, destination, expected, expected_size, run=None):
     destination=Path(destination)
@@ -60,7 +90,10 @@ def main():
     # Retain all bundled image, payload and executable checks; only network and
     # checkout preparation are handled by this resumable installer wrapper.
     sys.argv=[str(adapter/'tools/melee3d/prepare_native_inputs.py'),'--melee',str(args.melee.resolve())]
-    inputs.main()
+    if prepared_inputs(adapter):print('Verified prepared local game assets; no full-image patching needed.',flush=True)
+    else:
+        inputs.main()
+        prepared_inputs(adapter,write=True)
     def run(command):subprocess.run([str(x) for x in command],check=True)
     for name in ('melee-pc','gd-melee'):
         repository,_,revision=SOURCES[name]

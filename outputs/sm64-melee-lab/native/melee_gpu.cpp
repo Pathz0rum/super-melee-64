@@ -77,7 +77,20 @@ extern "C" int smb_gpu_end(float* rgba,float* depths,unsigned char* transmission
    });
  });
  {std::unique_lock lock(mutex);
+#ifdef _WIN32
+  // Unlike Metal, Windows Dawn backends may need event polling to complete
+  // MapAsync. The host is waiting for this frame, so its next normal event
+  // tick cannot service the callback. Never pump while holding its mutex.
+  const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(20);
+  while(!mapped) {
+   lock.unlock();webgpu::g_instance.ProcessEvents();lock.lock();
+   if(mapped)break;
+   if(std::chrono::steady_clock::now()>=deadline)return -2;
+   condition.wait_for(lock,std::chrono::milliseconds(1),[]{return mapped;});
+  }
+#else
   if(!condition.wait_for(lock,std::chrono::seconds(20),[]{return mapped;}))return -2;
+#endif
   if(failed)return -3;
  }
  auto* data=static_cast<const unsigned char*>(readback.GetConstMappedRange());

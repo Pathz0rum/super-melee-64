@@ -14,6 +14,9 @@ SOURCE_SUFFIXES={'.c','.cpp','.h','.inc','.json','.patch','.manifest','.md'}
 # Apply only these recorded installer-owned configuration changes; the ZIP
 # itself remains the exact pinned source, and other local edits are preserved.
 LOCAL_OVERRIDES={
+    'tools/melee3d/player_paths.py':[(
+        '    return Path(__file__).resolve().parents[2]',
+        '    root=Path(__file__).resolve().parents[2]\n    if sys.platform=="win32" and os.environ.get("SMB_UPSTREAM_ROOT"):\n        alias=Path(os.environ["SMB_UPSTREAM_ROOT"])\n        if not os.path.samefile(alias,root):raise RuntimeError("Invalid local adapter alias")\n        return alias\n    return root')],
     'tools/melee3d/native_mac.py':[(
         '"-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0", "-DAURORA_DAWN_PROVIDER=package",',
         '"-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0", "-DCMAKE_OSX_SYSROOT=" + os.environ.get("SDKROOT", "macosx"), "-DAURORA_DAWN_PROVIDER=package",')],
@@ -23,6 +26,8 @@ LOCAL_OVERRIDES={
     'tools/melee3d/native_reference.py':[(
         'from install_canonical import DEFAULT_DISC,MARKER,verify_files',
         'from install_canonical import MARKER,verify_files\nDEFAULT_DISC=ROOT/"build/local-reference-source"'),(
+        "    reference=ROOT/'build/references/walz0-v1.0.iso'",
+        "    cached=ROOT/'build/references/walz0-stage-assets'\n    receipt=cached/'source.json'\n    if receipt.is_file():\n        metadata=json.loads(receipt.read_text())\n        if metadata.get('reference_sha256')!=REFERENCE_SHA256:raise ValueError('Reference cache identity changed')\n        for name,expected in metadata['stage_assets'].items():\n            if Path(name).name!=name or sha(cached/name)!=expected:raise ValueError('Reference asset cache changed')\n        return cached,metadata['stage_assets']\n    reference=ROOT/'build/references/walz0-v1.0.iso'"),(
         "    from player_install import DEFAULT\n",
         "    # Use the installer-owned, verified Akaneia extraction.\n"),(
         "    candidates=(DEFAULT/'akaneia/files/GrCs.dat',ROOT/'build/akaneia/disc/files/GrCs.dat')",
@@ -34,6 +39,7 @@ def configure_local_sources(destination):
     for name,replacements in LOCAL_OVERRIDES.items():
         path=destination/name;source=path.read_text();original=source
         for before,after in replacements:
+            if after in source:continue
             if before not in source and after not in source:raise RuntimeError('Unexpected installer source configuration: '+name)
             source=source.replace(before,after)
         if source!=original:path.write_text(source,encoding='utf-8',newline='\n')
@@ -75,7 +81,14 @@ def extract(archive,destination):
             path=destination/name
             if not path.is_file():raise RuntimeError('Existing build adapter is incomplete: '+str(path))
             data=path.read_bytes()
-            for before,after in reversed(LOCAL_OVERRIDES.get(name,[])):data=data.replace(after.encode(),before.encode())
+            for before,after in reversed(LOCAL_OVERRIDES.get(name,[])):
+                # An older installer could repeat an override whose replacement
+                # contained its own search boundary. Accept only exact known
+                # repetitions that reduce back to the pinned original hash.
+                for _ in range(64):
+                    if after.encode() not in data:break
+                    data=data.replace(after.encode(),before.encode())
+                else:raise RuntimeError('Repeated installer configuration exceeds its safety limit')
             if sha(data)!=digest:raise RuntimeError('Preserving changed build adapter source: '+str(path))
         return PIN
     destination.parent.mkdir(parents=True,exist_ok=True)

@@ -5,10 +5,11 @@ Only work/sm64coopdx-melee is changed. The installed stock game and the
 single-player engine remain independent of this network host.
 """
 from pathlib import Path
+from build_paths import project_root
 import re,shutil,subprocess
 from coop_network_safety import patched_sources
 from build_host import copy_build_source
-HERE=Path(__file__).resolve().parent;ROOT=HERE.parents[2]
+HERE=Path(__file__).resolve().parent;ROOT=project_root(__file__)
 SOURCE=ROOT/'work/sm64coopdx-melee'
 def original(name):
     return subprocess.check_output(['git','-C',str(SOURCE),'show','HEAD:'+name],text=True)

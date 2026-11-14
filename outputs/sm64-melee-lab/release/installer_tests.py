@@ -13,6 +13,7 @@ import build_mac_app as mac_app
 import refresh_melee
 import build_install_helper as mac_helper
 from setup_diagnostics import diagnose,format_diagnostic
+from windows_setup_tests import WindowsSetupTests
 
 class InstallerTests(unittest.TestCase):
     def setUp(self):
