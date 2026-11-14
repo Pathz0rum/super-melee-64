@@ -104,7 +104,7 @@ class WindowsSetupTests(unittest.TestCase):
             fixture=root/'handoff.cpp';fixture.write_text(HANDOFF_FIXTURE)
             legacy=source.parent/'WindowsLauncher.cpp'
             batch.write_text('@echo off\nchcp 65001 >nul\ncall "'+installation+'\\Common7\\Tools\\VsDevCmd.bat" -arch=x64 -host_arch=x64\nif errorlevel 1 exit /b 1\n'+
-                'cl /nologo /utf-8 /std:c++17 /EHsc /O2 /MT /DUNICODE /D_UNICODE "'+str(source)+'" /Fe:"'+str(exe)+'" shell32.lib ole32.lib uuid.lib user32.lib comctl32.lib comdlg32.lib /link /SUBSYSTEM:WINDOWS\nif errorlevel 1 exit /b 1\n'+
+                'cl /nologo /utf-8 /std:c++17 /EHsc /O2 /MT /DUNICODE /D_UNICODE "'+str(source)+'" /Fe:"'+str(exe)+'" shell32.lib ole32.lib uuid.lib user32.lib gdi32.lib comctl32.lib comdlg32.lib /link /SUBSYSTEM:WINDOWS\nif errorlevel 1 exit /b 1\n'+
                 'cl /nologo /utf-8 /std:c++17 /EHsc /O2 /MT /DUNICODE /D_UNICODE "'+str(legacy)+'" /Fe:"'+str(root/'legacy.exe')+'" shell32.lib ole32.lib uuid.lib user32.lib /link /SUBSYSTEM:WINDOWS\nif errorlevel 1 exit /b 1\n'+
                 'cl /nologo /utf-8 /std:c++17 /EHsc /O2 /MT /DUNICODE /D_UNICODE "'+str(fixture)+'" /Fe:"'+str(root/'fixture.exe')+'" /link /SUBSYSTEM:WINDOWS\nexit /b %ERRORLEVEL%\n',encoding='utf-8')
             result=subprocess.run(['cmd.exe','/c',str(batch)],cwd=root,capture_output=True,text=True,errors='replace',timeout=120)
