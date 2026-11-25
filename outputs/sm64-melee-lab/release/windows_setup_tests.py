@@ -12,7 +12,7 @@ import unittest
 from unittest.mock import patch
 import zipfile
 import windows_curl
-from windows_dependencies import safe_member,unzip
+from windows_dependencies import listing_member,safe_member,unzip
 from windows_setup import copy_sources,source_files,verify_tools
 from setup_diagnostics import diagnose
 from windows_extract import extract
@@ -150,6 +150,14 @@ class WindowsSetupTests(unittest.TestCase):
             with zipfile.ZipFile(archive,'w') as z:z.writestr('../escape',b'x')
             with self.assertRaises(ValueError):unzip(archive,root/'out')
             self.assertFalse((root/'escape').exists())
+    def test_seven_zip_native_listing_paths_are_validated_after_normalisation(self):
+        # 7-Zip prints "mingw64\bin\gcc.exe" on Windows, though the archive
+        # member is a plain relative path. Normalise before judging it.
+        for name in ('mingw64\\bin\\gcc.exe','cmake-3.31.8-windows-x86_64/bin/cmake.exe','ninja.exe'):
+            with self.subTest(name=name):
+                self.assertNotIn('\\',str(listing_member(name)))
+        for name in ('..\\x','C:\\x','\\\\server\\share\\x','\\x','x\\NUL','x\\..'):
+            with self.subTest(name=name),self.assertRaises(ValueError):listing_member(name)
     def test_https_options_cannot_disable_tls_or_run_commands(self):
         for args in (['-k','https://example.test','-o','x'],['http://example.test','-o','x'],['--proto','=all','https://example.test','-o','x']):
             with self.assertRaises(ValueError):windows_curl.options(args)

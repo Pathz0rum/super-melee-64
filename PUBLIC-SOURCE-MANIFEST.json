@@ -181,11 +181,11 @@
     "outputs/sm64-melee-lab/release/setup_diagnostics.py": "1c5d6d712eb027aae93a240b157fb05b9bbb4351a580e25094063c2c1b4f5580",
     "outputs/sm64-melee-lab/release/setup_support.py": "b39466753063c5cdc3ba8edff14037ad40fc3c55f881a7d53172ae2950bd336b",
     "outputs/sm64-melee-lab/release/windows_curl.py": "90adbee6baa1baccdae9b22305d2720756d4acc60facfc1c92958e70b5036a07",
-    "outputs/sm64-melee-lab/release/windows_dependencies.py": "5ee3ad4bccaca07155dfac811fe66e655bb712bfaca5c848004d4eea48518f38",
+    "outputs/sm64-melee-lab/release/windows_dependencies.py": "0a9760cc32244674d44596a9d47293e817c073f608797076616a18aa07f682a9",
     "outputs/sm64-melee-lab/release/windows_extract.py": "f18a8b96f8249ef0252a3068ea690850b5fdb0a05961ac16aa4e76781b7c55db",
     "outputs/sm64-melee-lab/release/windows_native_build.py": "23f055b0a3c562e1af09e36f0213e1229bb8c458e741b93210aa036075bc3751",
     "outputs/sm64-melee-lab/release/windows_setup.py": "3f51d6c2ea92ac77ab1134238e29d4653eff51b69158c1226f08905b42caaf56",
-    "outputs/sm64-melee-lab/release/windows_setup_tests.py": "9a71c3fe00b46f03ab3d27f460f97a1b7e0edbceaed6f70a702aeab713e00cd0",
+    "outputs/sm64-melee-lab/release/windows_setup_tests.py": "48b9b12f6bd99b065d745a43f56b285b6e7a0616d58fa16d9009b22db050e507",
     "outputs/sm64-melee-lab/verification/beta-acceptance.json": "352bed5fd285de05f7f8ef50e6b7e2b44ad47647f51d48aae265f44e3d12e961",
     "outputs/sm64-melee-lab/verification/public-source-audit.json": "698b6a898e04b49f7a5f34e207a86d5f84df3ca7b386356fbc9e38be17a987db"
   }
