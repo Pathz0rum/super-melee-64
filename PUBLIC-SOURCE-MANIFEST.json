@@ -170,7 +170,7 @@
     "outputs/sm64-melee-lab/release/THIRD-PARTY.txt": "e12b92baca688a6072cd8f4b2651b62222ca3fb835926169ab5253972f2641c5",
     "outputs/sm64-melee-lab/release/UPSTREAM-LICENSING.txt": "b060e06bf91c3827711141ef2242feaf4843763e37e4d05fda6b44c788f7a39d",
     "outputs/sm64-melee-lab/release/WindowsInstaller.cpp": "1fc2e42da3a12431acd3909de74570075159acb219f275f219294f338a650aee",
-    "outputs/sm64-melee-lab/release/WindowsLauncher.cpp": "0ad693837a7d0cc59ac1dbad02e859f12b0672a035e25c2c2fdcbdd2cacbd167",
+    "outputs/sm64-melee-lab/release/WindowsLauncher.cpp": "616fd42b2eb6e82f6ce415ac2d619cf6ea416dc04746a785c5c6b4577c43d9bf",
     "outputs/sm64-melee-lab/release/WindowsRuntime.txt": "6e9cf9b21f967896faf513a247d9f80f763811d39fba23c8e3ade4b0faad53e8",
     "outputs/sm64-melee-lab/release/WindowsTool.cpp": "0b734d396a01be364c505e3a8b65d22387794279aa4d8293033ed8fd2915807c",
     "outputs/sm64-melee-lab/release/installer_tests.ps1": "ab85fb2ab7b4d16f595d51f99fef8c8a1f2b88d9d596d47f858d768fb8f5ac06",
