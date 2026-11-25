@@ -177,15 +177,15 @@
     "outputs/sm64-melee-lab/release/installer_tests.py": "29dd60f01cda22a54ac2662f7b83474ecee3e9db4023ee0c06039c5c476a1db8",
     "outputs/sm64-melee-lab/release/installer_windows_support.ps1": "96deddbeb47884ca374b109ed71387aea999c887fe0628e36520387dc91d94e5",
     "outputs/sm64-melee-lab/release/mac_toolchain.py": "703f9a3888ac55dae29d311e1043bb5f818da67a047172a086d75279bff94da0",
-    "outputs/sm64-melee-lab/release/prepare_installer_inputs.py": "d8378c3618a89337ce9d536655df06c329f464b9ffb8b7c596f16429ea59db8a",
+    "outputs/sm64-melee-lab/release/prepare_installer_inputs.py": "1fb8e89b2c411445126dfc0f82b064172511fdb05bca8aade7edecff990242c4",
     "outputs/sm64-melee-lab/release/setup_diagnostics.py": "1c5d6d712eb027aae93a240b157fb05b9bbb4351a580e25094063c2c1b4f5580",
     "outputs/sm64-melee-lab/release/setup_support.py": "b39466753063c5cdc3ba8edff14037ad40fc3c55f881a7d53172ae2950bd336b",
     "outputs/sm64-melee-lab/release/windows_curl.py": "90adbee6baa1baccdae9b22305d2720756d4acc60facfc1c92958e70b5036a07",
     "outputs/sm64-melee-lab/release/windows_dependencies.py": "0a9760cc32244674d44596a9d47293e817c073f608797076616a18aa07f682a9",
     "outputs/sm64-melee-lab/release/windows_extract.py": "f18a8b96f8249ef0252a3068ea690850b5fdb0a05961ac16aa4e76781b7c55db",
     "outputs/sm64-melee-lab/release/windows_native_build.py": "23f055b0a3c562e1af09e36f0213e1229bb8c458e741b93210aa036075bc3751",
-    "outputs/sm64-melee-lab/release/windows_setup.py": "3f51d6c2ea92ac77ab1134238e29d4653eff51b69158c1226f08905b42caaf56",
-    "outputs/sm64-melee-lab/release/windows_setup_tests.py": "48b9b12f6bd99b065d745a43f56b285b6e7a0616d58fa16d9009b22db050e507",
+    "outputs/sm64-melee-lab/release/windows_setup.py": "706862c801e18df174bff21603d09d61af0bd9954a23ac6933f59d1d849a52d8",
+    "outputs/sm64-melee-lab/release/windows_setup_tests.py": "1aebcaa1a88e671a75075cc19d8fde36c0ad6684c39014f0a8045af9f6dfea84",
     "outputs/sm64-melee-lab/verification/beta-acceptance.json": "352bed5fd285de05f7f8ef50e6b7e2b44ad47647f51d48aae265f44e3d12e961",
     "outputs/sm64-melee-lab/verification/public-source-audit.json": "698b6a898e04b49f7a5f34e207a86d5f84df3ca7b386356fbc9e38be17a987db"
   }

@@ -158,6 +158,25 @@ class WindowsSetupTests(unittest.TestCase):
                 self.assertNotIn('\\',str(listing_member(name)))
         for name in ('..\\x','C:\\x','\\\\server\\share\\x','\\x','x\\NUL','x\\..'):
             with self.subTest(name=name),self.assertRaises(ValueError):listing_member(name)
+    def test_status_ui_reports_a_live_heartbeat_during_silent_steps(self):
+        import time
+        import windows_setup
+        with tempfile.TemporaryDirectory() as d:
+            windows_setup.publish_ui(d,'Compile the native fighter engine',30)
+            self.assertEqual(Path(d,'setup-ui.status').read_text().splitlines(),
+                             ['30','Compile the native fighter engine'])
+            try:
+                windows_setup.start_status_heartbeat(0.05)
+                deadline=time.monotonic()+5
+                while time.monotonic()<deadline:
+                    if 'still working' in Path(d,'setup-ui.status').read_text():
+                        break
+                    time.sleep(0.05)
+                lines=Path(d,'setup-ui.status').read_text().splitlines()
+            finally:
+                windows_setup.STATUS_STOP.set()
+            self.assertEqual(lines[0],'30')
+            self.assertTrue(lines[1].startswith('Compile the native fighter engine (still working, '),lines[1])
     def test_https_options_cannot_disable_tls_or_run_commands(self):
         for args in (['-k','https://example.test','-o','x'],['http://example.test','-o','x'],['--proto','=all','https://example.test','-o','x']):
             with self.assertRaises(ValueError):windows_curl.options(args)
