@@ -9,6 +9,11 @@ static unsigned smb_video_samples;
 static int smb_video_compare(const void* a,const void* b){double x=*(const double*)a,y=*(const double*)b;return (x>y)-(x<y);}
 static void smb_video_dimensions(SDL_Window* window,int* w,int* h) {
     SDL_GL_GetDrawableSize(window,w,h);
+    /* Both engines render into this framebuffer and the guest re-renders for
+     * its HUD overlay, so fill rate is paid twice. SMB_RENDER_SCALE trades
+     * sharpness for frame rate: 1.0 native, 0.75 ~1.8x, 0.5 ~3x the pixels. */
+    double scale=getenv("SMB_RENDER_SCALE")?atof(getenv("SMB_RENDER_SCALE")):1.0;
+    if(scale>=0.25&&scale<1.0&&*h>0){*w=(int)(*w*scale+0.5);*h=(int)(*h*scale+0.5);if(*w<1)*w=1;if(*h<1)*h=1;}
     int limit=getenv("SMB_RENDER_MAX_HEIGHT")?atoi(getenv("SMB_RENDER_MAX_HEIGHT")):1080;
     if(limit>0&&*h>limit){*w=(int)((double)*w*limit/(*h));*h=limit;}
 }
