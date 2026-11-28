@@ -67,6 +67,11 @@ int smb_host_spawn_round(void);
 static unsigned character_changed_at;
 void smb_host_spawn_menu_request(void){if(embedded_step)character_menu_requested=2;}
 void smb_host_change_menu_request(void){if(embedded_step)character_menu_requested=1;}
+/* Settings live in the gfx layer; this flag is all the host loop needs. */
+static int settings_menu_requested;
+void smb_host_settings_request(void){settings_menu_requested=1;}
+int smb_settings_menu_requested(void){return settings_menu_requested;}
+void smb_host_settings_closed(void){settings_menu_requested=0;}
 void smb_host_cannon_fired(struct MarioState* m) {
     if(!embedded_step)return;
     memcpy(cannon_position,m->pos,sizeof cannon_position);
@@ -134,6 +139,7 @@ void smb_host_key(int code,int down) {
     if(code==SDL_SCANCODE_F7&&down&&!host_keys[code])character_menu_requested=2;
     if(code==SDL_SCANCODE_F10&&down&&!host_keys[code])smb_host_option(0,1);
     if(code==SDL_SCANCODE_F6&&down&&!host_keys[code])smb_host_change_menu_request();
+    if(code==SDL_SCANCODE_F11&&down&&!host_keys[code])smb_host_settings_request();
     if(code==SDL_SCANCODE_F9&&down&&!host_keys[code]) {
         smb_record_toggle();
     }
@@ -962,8 +968,8 @@ int smb_host_frame(struct MarioState* m) {
         if(perf_frames>=180){double avg=perf_sum/perf_frames;
             double samples=smb_perf_samples?smb_perf_samples:1;
             double wall=perf_sum*1000.0,rcalls=smb_perf_render_calls?smb_perf_render_calls:1,hcalls=smb_perf_hud_calls?smb_perf_hud_calls:1;
-            fprintf(stderr,"SMB PERF frames=%u window=%u ticks=%llu calls=%u/%u fps=%.2f avg_ms=%.2f worst_ms=%.2f step_ms=%.2f render_ms=%.2f hud_ms=%.2f comp_ms=%.2f guest_ms=%.2f share_step=%.1f share_render=%.1f share_hud=%.1f level=%d action=%08x\n",frames,perf_frames,smb_perf_samples,smb_perf_render_calls,smb_perf_hud_calls,avg>0?1000.0/avg:0.0,avg,perf_worst,smb_perf_step_us/(1000.0*samples),smb_perf_render_us/(1000.0*rcalls),smb_perf_hud_us/(1000.0*hcalls),smb_perf_comp_us/(1000.0*(smb_perf_render_calls+smb_perf_hud_calls?smb_perf_render_calls+smb_perf_hud_calls:1)),smb_perf_guest_us/(1000.0*(smb_perf_render_calls+smb_perf_hud_calls?smb_perf_render_calls+smb_perf_hud_calls:1)),wall>0?100.0*smb_perf_step_us/wall:0.0,wall>0?100.0*smb_perf_render_us/wall:0.0,wall>0?100.0*smb_perf_hud_us/wall:0.0,gCurrLevelNum,m->action);
-            perf_frames=0;perf_sum=0;perf_worst=0;smb_perf_step_us=smb_perf_render_us=smb_perf_hud_us=smb_perf_samples=0;smb_perf_render_calls=smb_perf_hud_calls=0;smb_perf_guest_us=smb_perf_comp_us=0;}
+            fprintf(stderr,"SMB PERF frames=%u window=%u ticks=%llu calls=%u/%u fps=%.2f avg_ms=%.2f worst_ms=%.2f step_ms=%.2f render_ms=%.2f hud_ms=%.2f share_step=%.1f share_render=%.1f share_hud=%.1f level=%d action=%08x\n",frames,perf_frames,smb_perf_samples,smb_perf_render_calls,smb_perf_hud_calls,avg>0?1000.0/avg:0.0,avg,perf_worst,smb_perf_step_us/(1000.0*samples),smb_perf_render_us/(1000.0*rcalls),smb_perf_hud_us/(1000.0*hcalls),wall>0?100.0*smb_perf_step_us/wall:0.0,wall>0?100.0*smb_perf_render_us/wall:0.0,wall>0?100.0*smb_perf_hud_us/wall:0.0,gCurrLevelNum,m->action);
+            perf_frames=0;perf_sum=0;perf_worst=0;smb_perf_step_us=smb_perf_render_us=smb_perf_hud_us=smb_perf_samples=0;smb_perf_render_calls=smb_perf_hud_calls=0;}
     }
     if(frames++%30==0||(getenv("SMB_SCENARIO")&&(!strcmp(getenv("SMB_SCENARIO"),"ledges")||!strcmp(getenv("SMB_SCENARIO"),"walls")))||last_motion!=snapshot.motion||last_hitboxes!=snapshot.hitboxes) {
         fprintf(stderr,"SMB HOST FRAME frame=%u kind=%u motion=%u bones=%u x=%.2f y=%.2f z=%.2f hitboxes=%u grounded=%u coins=%d stars=%d level=%d action=%08x face=%d camyaw=%d camx=%.0f camy=%.0f camz=%.0f\n",
@@ -1058,13 +1064,8 @@ void smb_host_render_native(const float* view,const float* projection,unsigned w
         fprintf(stderr,"SMB RENDER CAMERA eye=%.3f,%.3f,%.3f ndc=%.5f,%.5f,%.5f p=%.5f,%.5f\n",eye[0],eye[1],eye[2],clip[0]/clip[3],clip[1]/clip[3],clip[2]/clip[3],request.projection[10],request.projection[11]);
     }
     unsigned long long render_began=smb_perf_us();
-    /* The guest may answer 1 when its lane has no frame to hand back yet. */
-    {int rc=embedded_render(&request,rgba,depth,transmission);
-     if(rc==1)return;
-     if(rc){fprintf(stderr,"SMB HOST FAIL native render\n");exit(2);}}
-    unsigned long long guest_done=smb_perf_us();smb_perf_guest_us+=guest_done-render_began;
-    if(!getenv("SMB_GUEST_ONLY"))smb_gl_composite(rgba,depth,transmission,w,h,0);
-    smb_perf_comp_us+=smb_perf_us()-guest_done;
+    if(embedded_render(&request,rgba,depth,transmission)){fprintf(stderr,"SMB HOST FAIL native render\n");exit(2);}
+    smb_gl_composite(rgba,depth,transmission,w,h,0);
     smb_perf_render_us+=smb_perf_us()-render_began;smb_perf_render_calls++;
     smb_hud_request=request;smb_hud_request.flags=2|(request.flags&4);smb_hud_pending=1;
     static unsigned portrait_frames;
@@ -1118,11 +1119,8 @@ void smb_host_render_hud(void) {
         return;
     }
     unsigned long long hud_began=hud_now;
-    /* NULL depth selects the HUD lane, which runs one overlay behind. */
-    {int rc=embedded_render(&smb_hud_request,color,NULL,transmission);
-     if(rc==1){smb_perf_hud_us+=smb_perf_us()-hud_began;smb_perf_hud_calls++;return;}
-     if(rc){fprintf(stderr,"SMB HOST FAIL HUD render\n");exit(2);}}
-    smb_perf_hud_us+=smb_perf_us()-hud_began;smb_perf_hud_calls++;smb_perf_guest_us+=smb_perf_us()-hud_began;
+    if(embedded_render(&smb_hud_request,color,depth,transmission)){fprintf(stderr,"SMB HOST FAIL HUD render\n");exit(2);}
+    smb_perf_hud_us+=smb_perf_us()-hud_began;smb_perf_hud_calls++;
     if(interval_ms>1){memcpy(cache_color,color,(size_t)w*h*16);memcpy(cache_transmission,transmission,(size_t)w*h*4);cache_w=w;cache_h=h;cache_us=smb_perf_us();cache_valid=1;}
     int probe=getenv("SMB_HUD_OCCLUSION_PROBE")&&frames==90;
     float* background=NULL;float depth_before=0,depth_after=0;
